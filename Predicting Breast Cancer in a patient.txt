@@ -1,0 +1,79 @@
+
+
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report
+from sklearn.svm import SVC
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import StratifiedKFold, GridSearchCV, RandomizedSearchCV, cross_val_score
+from hyperopt import tpe, STATUS_OK, Trials, hp, fmin, STATUS_OK, space_eval
+
+
+
+df = pd.read_csv('cancer.csv')
+
+
+x = df.iloc[:,2:-1]
+y = df.iloc[:,1:2]
+
+
+en = LabelEncoder()
+y=en.fit_transform(y)
+
+x_train,x_test,y_train,y_test = train_test_split(x,y,test_size=.20,random_state=(0))
+
+sv = SVC()
+sv.fit(x_train,y_train)
+prc = sv.predict(x_test)
+print(classification_report(y_test,prc))
+
+print(accuracy_score(y_test, prc))
+
+
+print(sv.score(x_train,y_train))
+print(sv.score(x_test,y_test))
+
+
+C_range = np.logspace(-10, 10, 21)
+print(f'The list of values for C are {C_range}')
+
+gamma_range = np.logspace(-10, 10, 21)
+print(f'The list of values for gamma are {gamma_range}')
+
+
+
+param_grid = { 
+   
+    "C": C_range,
+    "kernel": ['rbf', 'poly'],
+    "gamma": gamma_range.tolist()+['scale', 'auto']
+    }
+
+scoring = ['accuracy']
+
+kfold = StratifiedKFold(n_splits=3, shuffle=True, random_state=0)
+
+random_search = RandomizedSearchCV(estimator=sv, 
+                           param_distributions=param_grid, 
+                           n_iter=100,
+                           scoring=scoring, 
+                           refit='accuracy', 
+                           n_jobs=-1, 
+                           cv=kfold, 
+                           verbose=0)
+random_result = random_search.fit(x_train, y_train)
+
+print(random_result)
+
+
+
+
+
+print(f'The best accuracy score for the training dataset is {random_result.best_score_:.4f}')
+print(f'The best hyperparameters are {random_result.best_params_}')
+print(f'The accuracy score for the testing dataset is {random_search.score(x_test, y_test):.4f}')
+
+
+
